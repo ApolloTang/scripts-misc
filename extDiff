@@ -1,0 +1,11 @@
+#!/bin/sh
+echo 1_path____ "$1"
+echo 2_old_file "$2"
+echo 3_old_hex_ "$3"
+echo 4_old_mode "$4"
+echo 5_new_file "$5"
+echo 6_new_hex_ "$6"
+echo 7_new_mode "$7"
+#[ $# -eq 7 ] && /usr/local/bin/extMerge "$2" "$5"
+#[ $# -eq 7 ] && kdiff3 "$1" "$2" -o "$1"
+[ $# -eq 7 ] && kdiff3 "$2" "$5"  ## no need to save output (-o) as you are just viewing difference
