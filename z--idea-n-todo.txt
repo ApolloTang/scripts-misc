@@ -1,0 +1,4 @@
+- create a bin/ folder so i can sync all my sym-link between computer.
+- rename this repo to 'custom-shell-command/'
+- create a script to use nodemon to watch python
+
