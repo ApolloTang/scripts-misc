@@ -5,8 +5,8 @@ config=$dir\/script-config.sh
 
 ## Place the following in script-config.sh
 ## ---------------------------------------
-## packageName='xxx'
-## packageVersion='0.1.1'
+## key='xxx'
+## value='0.1.1'
 ##
 ## dependency_type='prod'
 ## # dependency_type='dev'
@@ -16,70 +16,92 @@ config=$dir\/script-config.sh
 ## ---------------------------------------
 
 if [[ ! -f $config ]] ; then
-  echo "File $config not present, aborting."
-  echo '
-  Place the following in script-config.sh
-  ---------------------------------------
-  packageName='xxx'
-  packageVersion='0.1.1'
+printf "\nFile $config not present, aborting."
+echo '
+Paste the following in terminal:
+---------------------------------------
+cat <<- EOF > script-config.sh
+key='xxx'
+value='0.1.1'
 
-  dependency_type='prod'
-  # dependency_type='dev'
+field='prod'
+# field='dev'
+# field='scripts'
 
-  # export action='add'
-  action='remove'
-  ---------------------------------------
-  '
+# action='update'
+action='remove'
+
+paths=(
+  ./utils/common-*/package.json \  # you can use globe
+  ./path/to/my/package.json     \  # specified the path to file
+)
+
+EOF
+--------------------------------------
+'
   exit
 fi
 
 chmod 744 "$config"
 source $config
 
-echo '   packageName ' $packageName
-echo 'packageVersion ' $packageVersion
-echo 'dependency_type' $dependency_type
-echo '        action ' $action
-echo '--------- configration read'
+echo '--- Configuration ---'
+echo '    action: ' $action
+echo '       key: ' $key
+echo '     value: ' $value
+echo '     field: ' $field
 
 ##--------------------------------------------------------
 ##
 ## This script uses: gsed and jq
 ##
-KEY_DEV_DEP='devDependencies'
-KEY_PRD_DEP='dependencies'
+FIELD_DEV_DEP='devDependencies'
+FIELD_PROD_DEP='dependencies'
+FIELD_SCRIPTS='scripts'
 
-if [[ "$dependency_type" == 'prod' ]]; then
-  echo ">>> update key: devDependencies"
-  dep_type="$KEY_PRD_DEP"
+echo '--- Operation ---'
+if [[ "$field" == 'prod' ]]; then
+  echo "  update field: devDependencies"
+  field_type="$FIELD_DEV_DEP"
 fi
 
-if [[ "$dependency_type" == 'dev' ]]; then
- echo ">>> update key: dependencies"
- dep_type="$KEY_DEV_DEP"
+if [[ "$field" == 'dev' ]]; then
+ echo "  update field: dependencies"
+ field_type="$FIELD_PROD_DEP"
 fi
 
-JQ_FILTER_ADD=".$dep_type += {\"$packageName\": \"$packageVersion\"}"
-JQ_FILTER_REMOVE="with_entries(select(.key==\"$dep_type\").value |= del(.$packageName))"
+if [[ "$field" == 'scripts' ]]; then
+ echo "update field: scripts"
+ field_type="$FIELD_SCRIPTS"
+fi
 
-if [[ "$action" == 'add' ]]; then
+JQ_FILTER_ADD=".$field_type += {\"$key\": \"$value\"}"
+JQ_FILTER_REMOVE="with_entries(select(.key==\"$field_type\").value |= del(.$key))"
+
+if [[ "$action" == 'update' ]]; then
  filter="$JQ_FILTER_ADD"
- echo ">>> adding package:: $packageName@$packageVersion"
+ echo "  update key: $key@$value"
 fi
 
 if [[ "$action" == 'remove' ]]; then
  filter="$JQ_FILTER_REMOVE"
- echo ">>> remove package: $packageName"
+ echo "  remove key: $key"
 fi
 
-for fn in ./utils/**/package.json; do
-  fn_backup=$(echo $fn | gsed -E 's/(.*)\.json/\1-backup.json/')
 
-  echo 'backup >>>' $fn $fn_backup
-  cp $fn $fn_backup
+echo '--- Start ---'
+for fn in "${paths[@]}"; do
+  if [[ -f $fn ]] ; then
+    fn_backup=$(echo $fn | gsed -E 's/(.*)\.json/\1-backup.json/')
 
-  echo 'jq filter >>>' $filter
-  jq "$filter" $fn_backup > $fn
+    echo '   backup: ' $fn_backup
+    cp $fn $fn_backup
+
+    echo 'jq filter: ' $filter
+    jq "$filter" $fn_backup > $fn
+  else
+    echo file: '"'$fn'"' does not exist
+  fi
 done
 
 
